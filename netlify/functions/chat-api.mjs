@@ -9,7 +9,7 @@ const ROOMS = [
 ];
 const MODELS = {
  groq:[['openai/gpt-oss-120b','GPT-OSS 120B (추천)'],['llama-3.3-70b-versatile','Llama 3.3 70B'],['openai/gpt-oss-20b','GPT-OSS 20B'],['llama-3.1-8b-instant','Llama 3.1 8B']],
- gemini:[['gemini-3.8-flash','Gemini 3.8 Flash (추천)'],['gemini-3.5-flash-lite','Gemini 3.5 Flash-Lite'],['gemini-3.6-flash','Gemini 3.6 Flash'],['gemini-4-argon','Gemini 4 Argon']]
+ gemini:[['gemini-3.5-flash-lite','Gemini 3.5 Flash-Lite (추천, 빠름)'],['gemini-3.8-flash','Gemini 3.8 Flash'],['gemini-3.6-flash','Gemini 3.6 Flash'],['gemini-4-argon','Gemini 4 Argon']]
 };
 const envKey=p=>process.env[p.toUpperCase()+'_API_KEY']?.trim();
 const available=()=>Object.keys(MODELS).filter(p=>envKey(p));
@@ -103,9 +103,9 @@ async function chat(req){
  if(!ids.includes(provider))throw new ApiError('선택한 AI 서비스의 키가 없어요.','provider_unavailable',400);
  const model=MODELS[provider].some(([m])=>m===body.model)?body.model:defaultModel(provider);
  const [system,temperature]=await systemPrompt(body),messages=body.messages.slice(-20);
- const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),50000);
+ const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),25000);
  const url=provider==='groq'?'https://api.groq.com/openai/v1/chat/completions':'https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':streamGenerateContent?alt=sse';
- const payload=provider==='groq'?{model,stream:true,temperature,max_tokens:1024,messages:[{role:'system',content:system},...messages],...(model.startsWith('openai/gpt-oss')?{reasoning_effort:'low'}:{})}:{systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature,maxOutputTokens:4096}};
+ const payload=provider==='groq'?{model,stream:true,temperature,max_tokens:1024,messages:[{role:'system',content:system},...messages],...(model.startsWith('openai/gpt-oss')?{reasoning_effort:'low'}:{})}:{systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{maxOutputTokens:2048,thinkingConfig:{thinkingLevel:model.includes("flash-lite")||model.includes("3.6")?"minimal":"low"}}};
  let upstream;
  try{upstream=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(provider==='groq'?{Authorization:'Bearer '+envKey(provider)}:{'x-goog-api-key':envKey(provider)})},body:JSON.stringify(payload),signal:abort.signal});}catch{clearTimeout(timeout);throw new ApiError('AI 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.','network',502);}
  if(!upstream.ok){clearTimeout(timeout);await upstream.body?.cancel();const s=upstream.status;throw new ApiError(s===429?'AI 사용 한도에 걸렸어요. 잠시 후 다시 보내 주세요.':s===401||s===403?'AI 서비스가 서버의 키를 거부했어요.':s===400||s===404?'이 모델을 사용할 수 없어요. 설정에서 다른 모델을 골라 주세요.':'AI 서버 오류가 발생했어요.',s===429?'rate_limited':s===401||s===403?'bad_key':s===400||s===404?'bad_model':'upstream_error',s===429?429:s===400||s===404?400:502);}
