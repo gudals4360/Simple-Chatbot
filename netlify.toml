@@ -1,0 +1,5 @@
+# Publish only the static frontend. Host the Python API separately.
+[build]
+  base = "."
+  command = ""
+  publish = "Simple Chat bot/frontend"
