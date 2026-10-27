@@ -1,0 +1,7 @@
+# 비밀 값: 어느 폴더에 있든 절대 올리지 않음
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key

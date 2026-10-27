@@ -95,6 +95,17 @@ python -m unittest discover -s tests -v
 - 화면은 AI 서비스에 직접 연결하지 않고 항상 이 서버를 거쳐요. 키는 브라우저에 저장되지도, 응답에 담기지도 않아요.
 - 예전 한 파일 버전(standalone.html)을 쓰던 브라우저에 남은 키는 새 화면이 열릴 때 지워져요.
 
+## API 키가 GitHub에 올라가지 않게 막는 장치
+
+1. **`.gitignore`**: `.env` 파일은 `git add`를 해도 아예 올라가지 않아요.
+2. **커밋 전 검사 (내 컴퓨터)**: 저장소를 받은 뒤 한 번만 아래 명령을 실행해 두세요. 커밋하려는 파일에 키처럼 보이는 값(`gsk_…`, `AIza…` 등)이나 `.env` 파일이 있으면 커밋을 멈추고 경고해요.
+   ```bash
+   git config core.hooksPath .githooks
+   ```
+3. **올라간 뒤 검사 (GitHub)**: push하거나 웹에서 파일을 올릴 때마다 GitHub Actions의 **API 키 검사**가 돌아요. 키가 보이면 빨간 X로 실패하고 이메일로 알려 줘요.
+
+경고가 뜨면 키를 지우고 다시 커밋하세요. 이미 GitHub에 올라갔다면 지워도 기록에 남으니, 그 키는 바로 삭제하고 새로 발급받아야 해요.
+
 ## 대화 상대
 
 | 이름 | 역할 | 특징 |
@@ -157,3 +168,4 @@ python -m unittest discover -s tests -v
 14. 글자 선택이 배경 클릭으로 해제되지 않던 문제 수정
 15. Gemini API 지원 추가 (Groq·Gemini 선택)
 16. 백엔드(routers·services·repositories·models·schemas·tests) 분리, 화면을 css·js 폴더로 분리, API 키를 서버로 이동
+17. API 키 유출 경고 장치 추가 (.gitignore, 커밋 전 검사, GitHub Actions 검사)

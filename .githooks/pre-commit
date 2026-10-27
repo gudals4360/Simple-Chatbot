@@ -1,0 +1,9 @@
+#!/bin/sh
+# 커밋하기 직전에 API 키가 들어 있는지 검사한다. 키가 보이면 커밋을 멈춘다.
+# 한 번만 켜 두면 돼요:  git config core.hooksPath .githooks
+PY=$(command -v python3 || command -v python)
+if [ -z "$PY" ]; then
+  echo "⚠️  파이썬이 없어 API 키 검사를 건너뛰었어요. 커밋 전에 키가 없는지 직접 확인해 주세요."
+  exit 0
+fi
+exec "$PY" "$(git rev-parse --show-toplevel)/.github/scripts/check_secrets.py" --staged
