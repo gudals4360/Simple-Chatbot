@@ -2,23 +2,98 @@
 
 카카오톡처럼 생긴 모바일 채팅 앱 형태의 AI 챗봇이에요. 한국경제아카데미 UXUI·PM 부트캠프 매니저 **그럴깡**, 날씨 도우미 **하늘깡**, 합성 페르소나 데이터로 만든 **친구 5명**과 대화할 수 있어요.
 
-HTML 파일 하나(`index.html`)로 동작해요. 설치나 서버 없이 브라우저로 열면 바로 쓸 수 있어요.
+- **frontend/**: 화면 (HTML · CSS · JavaScript 모듈)
+- **backend/**: 파이썬 API 서버 (Starlette). AI 호출, 프롬프트, 맛집 검색, 날씨, DB를 담당해요.
+- API 키는 서버의 `backend/.env`에만 있어요. 브라우저로는 전달되지 않아요.
 
 ## 실행 방법
 
-1. `index.html`을 내려받아 Chrome, Safari, Edge 같은 브라우저로 열어요.
-   - Claude 앱의 파일 미리보기 창처럼 외부 접속이 막힌 곳에서는 AI 서버에 연결되지 않아요.
-2. 처음 열면 설정 창이 떠요. **Groq** 또는 **Gemini**를 고르고 API 키를 넣어요.
-   - Groq: https://console.groq.com/keys (`gsk_`로 시작)
-   - Gemini: https://aistudio.google.com/apikey (`AIza`로 시작)
-3. **저장하고 대화하기**를 누르면 채팅 목록이 나와요. 원하는 채팅방을 열어 대화해요.
+```bash
+cd "Simple Chat bot/backend"
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                   # .env를 열어 GROQ_API_KEY 또는 GEMINI_API_KEY 입력
+python main.py
+```
+
+브라우저에서 **http://127.0.0.1:8000** 을 열면 돼요. 서버가 화면(frontend/)까지 함께 보여 줘요.
+
+- Groq 키: https://console.groq.com/keys (`gsk_`로 시작)
+- Gemini 키: https://aistudio.google.com/apikey (`AIza`로 시작)
+- 처음 실행하면 `backend/app.db`(SQLite)가 만들어지고 식당 664곳과 페르소나 5명이 들어가요.
+
+## 폴더 구성
+
+```
+Simple Chat bot/
+├── backend/
+│   ├── main.py               # 앱 실행 및 설정 (서비스 조립, /api 라우트, 화면 파일 제공)
+│   ├── config.py             # 환경 변수(.env) 읽기
+│   ├── requirements.txt
+│   ├── .env.example          # 키 입력 양식 (.env는 GitHub에 올라가지 않음)
+│   ├── routers/              # API 요청과 응답 처리
+│   │   ├── chat.py           #   POST /api/chat        AI 답변 스트리밍
+│   │   ├── rooms.py          #   GET  /api/rooms, /api/health
+│   │   ├── places.py         #   GET  /api/places/search
+│   │   ├── weather.py        #   GET  /api/weather
+│   │   └── common.py         #   공통 응답·오류 형식
+│   ├── services/             # 실제 비즈니스 로직
+│   │   ├── chat_service.py   #   방 확인 → 맛집·날씨 정보 붙이기 → 프롬프트 → AI
+│   │   ├── llm_service.py    #   Groq·Gemini 스트리밍 호출, 오류 정리
+│   │   ├── prompt_service.py #   knowledge/ 문서로 시스템 프롬프트 만들기
+│   │   ├── place_service.py  #   질문에 맞는 식당 검색 (메뉴·가격·평점·거리)
+│   │   ├── weather_service.py#   지역·날짜 찾기, Open-Meteo 예보 요약, 옷차림·우산
+│   │   └── room_service.py   #   채팅방 목록
+│   ├── repositories/         # 데이터베이스 접근
+│   │   ├── db.py             #   연결, 테이블 생성, 처음 데이터 넣기
+│   │   ├── place_repository.py
+│   │   └── persona_repository.py
+│   ├── models/
+│   │   └── tables.py         # DB 테이블 구조 (places, personas)
+│   ├── schemas/              # 요청·응답 데이터 형식 (pydantic)
+│   │   ├── chat.py  room.py  place.py  weather.py
+│   ├── knowledge/            # 프롬프트 문서 (부트캠프 정보, 맛집 메모, 캐릭터별 지침)
+│   ├── data/                 # 처음 DB에 넣는 원본 (카카오맵 식당 TSV, 페르소나 JSON)
+│   ├── scripts/minipq.py     # 페르소나 원본 parquet을 읽을 때 쓴 도구
+│   └── tests/                # 자동화 테스트 (가짜 AI·가짜 날씨로 실행)
+├── frontend/
+│   ├── index.html
+│   ├── css/                  # base(색·레이아웃) · chat · list · sheet
+│   └── js/
+│       ├── main.js           # 시작점
+│       ├── api/client.js     # 백엔드 호출, 스트리밍 받기
+│       ├── core/             # dom 도구, 상태, 브라우저 저장소
+│       ├── ui/               # 채팅방 목록, 말풍선, 입력, 설정, 아바타
+│       └── effects/          # 테마, 패럴랙스 배경, 오버스크롤, 빠른 질문 스크롤
+└── standalone.html           # 서버 없이 한 파일로 도는 예전 버전 (키를 브라우저에 입력)
+```
+
+## API
+
+| 메서드 | 주소 | 설명 |
+|---|---|---|
+| GET | `/api/health` | 서버 상태, 키가 설정된 AI 서비스와 모델 목록 (키 값은 보내지 않음) |
+| GET | `/api/rooms` | 채팅방 7개 정보 |
+| POST | `/api/chat` | `{room_id, messages, provider?, model?, notes?}` → 답변을 `text/plain`으로 흘려보냄 |
+| GET | `/api/places/search?q=만원 이하 점심` | 교육장 근처 식당 검색 |
+| GET | `/api/weather?q=내일 부산` | 하늘깡이 쓰는 날씨 요약 |
+
+오류는 `{"error": "...", "code": "..."}` 형식이에요. 예: 키 없음 503 `no_provider`, 잘못된 키 401 `bad_key`, 한도 초과 429 `rate_limited`, 형식 오류 422.
+
+## 테스트
+
+```bash
+cd "Simple Chat bot/backend"
+python -m unittest discover -s tests -v
+```
+
+실제 AI·날씨 서버 대신 가짜를 넣어서, 키나 인터넷 없이 28개 테스트가 돌아가요.
 
 ## API 키 보안
 
-- 키는 코드나 파일에 들어가지 않아요. 이 저장소에도 키가 없어요.
-- 키는 사용하는 사람의 브라우저에만 저장돼요. "이 기기에 기억하기"를 끄면 탭을 닫을 때 지워져요.
-- 대화할 때는 고른 서비스 서버(`api.groq.com` 또는 `generativelanguage.googleapis.com`)로만 전송돼요.
-- 여러 사람에게 공개 배포하려면 키를 서버에 숨기는 중계 서버를 따로 두는 걸 권해요.
+- 키는 `backend/.env`에만 넣어요. `.gitignore`에 들어 있어서 GitHub에 올라가지 않아요.
+- 화면은 AI 서비스에 직접 연결하지 않고 항상 이 서버를 거쳐요. 키는 브라우저에 저장되지도, 응답에 담기지도 않아요.
+- 예전 한 파일 버전(standalone.html)을 쓰던 브라우저에 남은 키는 새 화면이 열릴 때 지워져요.
 
 ## 대화 상대
 
@@ -57,20 +132,6 @@ HTML 파일 하나(`index.html`)로 동작해요. 설치나 서버 없이 브라
 - 교육장(양평역) 반경 800m 식당·카페 664곳의 카카오맵 평점과 메뉴 가격, 질문에 맞는 가게만 골라 추천
 - Open-Meteo 날씨 예보 (API 키 불필요), 전국 약 90개 지역
 
-## 폴더 구성
-
-```
-Simple Chat bot/
-├── index.html            # 챗봇 앱 전체 (HTML·CSS·JS 한 파일)
-├── README.md
-└── data/
-    ├── kakao_places.tsv  # 교육장 근처 식당·카페 데이터 (index.html에 내장됨)
-    ├── personas.json     # 페르소나 5명 설정 (index.html에 내장됨)
-    └── minipq.py         # 페르소나 원본 parquet을 읽을 때 쓴 파이썬 도구
-```
-
-`data/` 폴더의 파일은 참고용 원본이에요. 앱은 `index.html` 하나만 있으면 동작해요.
-
 ## 데이터 출처
 
 - 부트캠프 정보: 한경닷컴 IT교육센터 공식 과정 페이지 (2026년 10월 27일 확인)
@@ -95,3 +156,4 @@ Simple Chat bot/
 13. 날씨 도우미 하늘깡 추가 (Open-Meteo)
 14. 글자 선택이 배경 클릭으로 해제되지 않던 문제 수정
 15. Gemini API 지원 추가 (Groq·Gemini 선택)
+16. 백엔드(routers·services·repositories·models·schemas·tests) 분리, 화면을 css·js 폴더로 분리, API 키를 서버로 이동

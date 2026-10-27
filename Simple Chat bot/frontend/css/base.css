@@ -1,0 +1,82 @@
+/* 색상 토큰(라이트·다크)과 앱 전체 레이아웃 */
+/* Layout: 데스크톱에서는 가운데 폰 프레임, 모바일에서는 전체 화면 채팅 앱 */
+:root {
+  --glass: rgba(255,255,255,.46);
+  --glass-edge: rgba(70,100,140,.12);
+  --glass-shade: rgba(120,150,190,.18);
+  --list-bg: rgba(255,255,255,.78);
+  --list-hover: rgba(0,0,0,.05);
+  --prof-a: #9DB6CF;
+  --prof-b: #5E7C9C;
+  --badge: #FF4B3E;
+  --page: #E4E8EC;
+  --frame: #000;
+  --chat-bg: #B2C7DA;
+  --bar: #B2C7DA;
+  --bar-fg: #1F2328;
+  --bubble-me: #FEE500;
+  --bubble-me-fg: #191919;
+  --bubble-bot: #FFFFFF;
+  --bubble-bot-fg: #191919;
+  --meta: #556677;
+  --unread: #E6B800;
+  --divider-bg: rgba(0,0,0,.12);
+  --divider-fg: #FFFFFF;
+  --input-bg: #FFFFFF;
+  --input-fg: #191919;
+  --input-line: #E3E3E3;
+  --muted: #8A8F96;
+  --chip-bg: #FFFFFF;
+  --chip-fg: #2B2F33;
+  --sheet-bg: #FFFFFF;
+  --sheet-fg: #191919;
+  --field-bg: #F4F5F7;
+  --accent: #FEE500;
+  --accent-fg: #191919;
+  --danger: #D93025;
+  --ok: #188038;
+  --notice-bg: rgba(255,255,255,.92);
+  --scrim: rgba(0,0,0,.45);
+  --font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass: rgba(16,22,42,.42); --glass-edge: rgba(255,255,255,.07); --glass-shade: rgba(0,0,0,.35); --list-bg: rgba(10,14,26,.62); --list-hover: rgba(255,255,255,.06); --prof-a: #1C2546; --prof-b: #080B16; --page: #07090F; --chat-bg: #0E1322; --bar: rgba(14,19,34,.92); --bar-fg: #EEF1F4;
+    --bubble-me: #FEE500; --bubble-me-fg: #191919; --bubble-bot: #2E3845; --bubble-bot-fg: #EEF1F4;
+    --meta: #9AA8B8; --unread: #FEE500; --divider-bg: rgba(255,255,255,.08); --divider-fg: #C9D3DE;
+    --input-bg: #161C24; --input-fg: #EEF1F4; --input-line: #2C3440; --muted: #8C96A3;
+    --chip-bg: #2E3845; --chip-fg: #EEF1F4; --sheet-bg: #1A2029; --sheet-fg: #EEF1F4; --field-bg: #262E39;
+    --notice-bg: rgba(46,56,69,.95); --danger: #FF7B72; --ok: #6DD58C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --glass: rgba(16,22,42,.42); --glass-edge: rgba(255,255,255,.07); --glass-shade: rgba(0,0,0,.35); --list-bg: rgba(10,14,26,.62); --list-hover: rgba(255,255,255,.06); --prof-a: #1C2546; --prof-b: #080B16; --page: #07090F; --chat-bg: #0E1322; --bar: rgba(14,19,34,.92); --bar-fg: #EEF1F4;
+  --bubble-me: #FEE500; --bubble-me-fg: #191919; --bubble-bot: #2E3845; --bubble-bot-fg: #EEF1F4;
+  --meta: #9AA8B8; --unread: #FEE500; --divider-bg: rgba(255,255,255,.08); --divider-fg: #C9D3DE;
+  --input-bg: #161C24; --input-fg: #EEF1F4; --input-line: #2C3440; --muted: #8C96A3;
+  --chip-bg: #2E3845; --chip-fg: #EEF1F4; --sheet-bg: #1A2029; --sheet-fg: #EEF1F4; --field-bg: #262E39;
+  --notice-bg: rgba(46,56,69,.95); --danger: #FF7B72; --ok: #6DD58C; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--page); color: var(--bar-fg); font-family: var(--font);
+  display: flex; justify-content: center; align-items: center;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid #3B82F6; outline-offset: 2px; }
+
+.app {
+  position: relative; width: 100%; max-width: 420px; height: 100%;
+  background: var(--chat-bg); display: flex; flex-direction: column; overflow: hidden;
+}
+@media (min-width: 520px) and (min-height: 760px) {
+  .app { height: min(860px, calc(100% - 48px)); border-radius: 36px; border: 10px solid var(--frame);
+         box-shadow: 0 30px 80px rgba(0,0,0,.25); }
+}
+

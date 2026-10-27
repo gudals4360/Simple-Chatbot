@@ -1,0 +1,12 @@
+# 비밀 값: 절대 올리지 않음
+.env
+backend/.env
+
+# 실행하면 자동으로 만들어지는 파일
+backend/app.db
+*.db-journal
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
