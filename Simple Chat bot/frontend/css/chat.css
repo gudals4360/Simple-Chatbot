@@ -38,8 +38,11 @@
 .notice .fold { display: none; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .notice[aria-expanded="true"] .fold { display: block; }
 
-/* 채팅 */
-.chat { overscroll-behavior: none; will-change: transform; flex: 1; overflow-y: auto; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+/* 채팅: 움직이지 않는 바깥 영역이 바운스 효과를 채팅방 안으로 제한한다. */
+.chat-viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; z-index: 1; display: flex; flex-direction: column; isolation: isolate; }
+.topbar, .notice, .chips, .composer { flex-shrink: 0; }
+.chat > * { flex-shrink: 0; }
+.chat { overscroll-behavior: none; will-change: transform; flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
 .divider { align-self: center; margin: 8px 0; padding: 4px 12px; border-radius: 999px; font-size: 12px;
   background: var(--divider-bg); color: var(--divider-fg); }
 .row { display: flex; gap: 8px; align-items: flex-start; }
