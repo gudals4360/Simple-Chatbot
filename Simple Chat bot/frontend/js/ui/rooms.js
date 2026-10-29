@@ -77,7 +77,9 @@ function enterRoom(R) {
   $('roomName').textContent = R.def.name;
   $('roomSub').textContent = R.def.sub;
   $('notice').hidden = R.def.kind !== 'manager';
-  $('chips').innerHTML = R.def.chips.map((c) => `<button class="chip">${esc(c)}</button>`).join('');
+  $('chips').hidden = R.def.kind === 'persona';
+  $('toggleChips').hidden = R.def.kind === 'persona';
+  $('chips').innerHTML = R.def.kind === 'persona' ? '' : R.def.chips.map((c) => `<button class="chip">${esc(c)}</button>`).join('');
   $('chips').scrollLeft = 0;
   $('chatView').setAttribute('aria-label', `${R.def.name} 채팅방`);
   $('msg').placeholder = PLACEHOLDER[R.def.kind] || `${R.def.name}님에게 메시지 보내기`;

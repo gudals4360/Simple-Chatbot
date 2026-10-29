@@ -62,4 +62,4 @@ export function botGroup(R) {
 
 export function markRead(R) { R.el.querySelectorAll('.unread').forEach((u) => u.remove()); }
 
-export function greetRoom(R) { botGroup(R).render(R.def.hello, true); }
+export function greetRoom(R) { if (R.def.kind === 'persona' || !R.def.hello) return; botGroup(R).render(R.def.hello, true); }

@@ -45,12 +45,27 @@ test('oversized history is rejected before calling the provider', async () => {
 test('rooms use a brief greeting and persona UI has no AI label', async () => {
   const response=await handler(new Request('https://test.local/api/rooms'));
   const rooms=await response.json();
-  assert.equal(rooms.find(r=>r.id==='donggyu').hello,'안녕하세요 ㅎㅎ 이동규예요.');
+  assert.equal(rooms.find(r=>r.id==='donggyu').hello,'');
+  assert.deepEqual(rooms.find(r=>r.id==='donggyu').chips,[]);
   for(const path of ['../../Simple Chat bot/frontend/js/ui/rooms.js','../../Simple Chat bot/standalone.html']) {
     const source=fs.readFileSync(new URL(path,import.meta.url),'utf8');
     assert.ok(!source.includes('AI 페르소나'));
     assert.ok(!source.includes('합성 페르소나 데이터로 만든 AI 대화 상대예요'));
   }
+});
+
+test('opening a persona room never creates a greeting bubble', () => {
+  const source=fs.readFileSync(new URL('../../Simple Chat bot/frontend/js/ui/messages.js',import.meta.url),'utf8');
+  const greet=source.match(/export function greetRoom\(R\) \{[^\n]+/)[0].replace('export ','');
+  let calls=0;
+  const room={def:{kind:'persona',hello:'stale saved greeting'}};
+  vm.runInNewContext(greet+'\ngreetRoom(room)',{room,botGroup:()=>{calls++;return {render(){}};}});
+  assert.equal(calls,0);
+  const html=fs.readFileSync(new URL('../../Simple Chat bot/standalone.html',import.meta.url),'utf8');
+  const start=html.indexOf('  function greetRoom(R) {');
+  const end=html.indexOf('\n  }',start)+4;
+  vm.runInNewContext(html.slice(start,end)+'\ngreetRoom(room)',{room:{def:{persona:true,hello:'stale greeting'}},botGroup:()=>{calls++;return {render(){}};}});
+  assert.equal(calls,0);
 });
 
 test('standalone and modular UI retain complete pairs within the API limit', () => {
