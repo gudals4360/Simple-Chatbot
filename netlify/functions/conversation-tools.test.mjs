@@ -23,3 +23,18 @@ test('every embedded standalone script parses',()=>{
   const html=fs.readFileSync(new URL('../../Simple Chat bot/standalone.html',import.meta.url),'utf8');
   for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
 });
+
+test('long API keys remain intact when switching between masked and multiline inputs',()=>{
+  const html=fs.readFileSync(new URL('../../Simple Chat bot/standalone.html',import.meta.url),'utf8');
+  const fields={apiKey:{value:''},apiKeyVisible:{value:''},keyCount:{textContent:''}};
+  const start=html.indexOf('  function syncKeyInput(source) {');
+  const end=html.indexOf('\n  }',start)+4;
+  const sync=vm.runInNewContext(html.slice(start,end)+'\nsyncKeyInput',{$:id=>fields[id]});
+  const key='sample-authorization-key.'+'x'.repeat(5000)+'+/=';
+  fields.apiKey.value=key;sync(fields.apiKey);
+  assert.equal(fields.apiKeyVisible.value,key);
+  fields.apiKeyVisible.value+='x';sync(fields.apiKeyVisible);
+  assert.equal(fields.apiKey.value,key+'x');
+  assert.ok(fields.keyCount.textContent.startsWith(String(key.length+1)+'자'));
+  for(const id of ['apiKey','apiKeyVisible'])assert.ok(!html.match(new RegExp('<(?:input|textarea) id="'+id+'"[^>]*>'))[0].includes('maxlength'));
+});

@@ -431,9 +431,11 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
       <div class="field">
         <label for="apiKey" id="keyLabel">API 키</label>
         <div class="key-wrap">
-          <input id="apiKey" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="">
+          <input id="apiKey" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="" aria-describedby="keyCount">
+          <textarea id="apiKeyVisible" class="input" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="API 키 전체 보기" aria-describedby="keyCount" style="overflow-wrap:anywhere;word-break:break-all;resize:vertical;min-width:0;flex:1" hidden></textarea>
           <button type="button" class="ghost" id="toggleKey">보기</button>
         </div>
+        <div class="hint" id="keyCount" role="status">0자 입력됨 · 글자 수 제한 없음</div>
         <label class="check"><input type="checkbox" id="remember"> <span>이 기기에 기억하기<br><span class="hint">끄면 브라우저 탭을 닫을 때 키가 자동으로 지워져요. 공용 PC에서는 꺼 두세요.</span></span></label>
         <div class="msg-line" id="keyMsg"></div>
       </div>
@@ -488,7 +490,7 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
       label: 'Gemini', keyStore: 'gk_gemini_key', modelStore: 'gk_model_gemini', host: 'generativelanguage.googleapis.com',
       keyUrl: 'https://aistudio.google.com/apikey', keyUrlText: 'aistudio.google.com/apikey', placeholder: 'Google AI Studio에서 복사한 키 전체',
       models: [['gemini-3.8-flash', 'Gemini 3.8 Flash (추천)'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (가장 빠름)'], ['gemini-3.6-flash', 'Gemini 3.6 Flash'], ['gemini-4-argon', 'Gemini 4 Argon (가장 똑똑함, 느림)']],
-      valid: (k) => /^[A-Za-z0-9_\-]{30,}$/.test(k), invalid: 'Gemini 키 형식이 아니에요. Google AI Studio에서 복사한 키 전체를 붙여 넣어 주세요.'
+      valid: (k) => /^[\x21-\x7E]+$/.test(k), invalid: 'Gemini 키 형식이 아니에요. Google AI Studio에서 복사한 키 전체를 붙여 넣어 주세요.'
     }
   };
   const keys = { groq: store.get(PROVIDERS.groq.keyStore) || '', gemini: store.get(PROVIDERS.gemini.keyStore) || '' };
@@ -1674,7 +1676,7 @@ function initConversationTools(getRoom, updateSend) {
     $('keyLabel').textContent = `${P.label} API 키`;
     $('apiKey').placeholder = P.placeholder;
     $('apiKey').value = keys[sheetProv];
-    $('apiKey').type = 'password'; $('toggleKey').textContent = '보기';
+    $('apiKey').type = 'password'; $('apiKey').hidden=false; $('apiKeyVisible').hidden=true; syncKeyInput($('apiKey')); $('toggleKey').textContent = '보기'; $('toggleKey').setAttribute('aria-pressed','false');
     $('remember').checked = keys[sheetProv] ? store.isPersisted(P.keyStore) : false;
     $('model').innerHTML = P.models.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
     $('model').value = models[sheetProv];
@@ -1706,9 +1708,21 @@ function initConversationTools(getRoom, updateSend) {
   });
   $('scrim').addEventListener('click', (e) => { if (e.target === $('scrim') && apiKey) closeSheet(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('scrim').hidden && apiKey) closeSheet(); });
-  $('toggleKey').addEventListener('click', () => {
-    const k = $('apiKey'); const show = k.type === 'password';
-    k.type = show ? 'text' : 'password'; $('toggleKey').textContent = show ? '숨기기' : '보기';
+  function syncKeyInput(source) {
+    const value=source.value;
+    $('apiKey').value=value;
+    $('apiKeyVisible').value=value;
+    $('keyCount').textContent=Array.from(value).length+'자 입력됨 · 글자 수 제한 없음';
+  }
+  $('apiKey').addEventListener('input',()=>syncKeyInput($('apiKey')));
+  $('apiKeyVisible').addEventListener('input',()=>syncKeyInput($('apiKeyVisible')));
+  $('toggleKey').addEventListener('click',()=>{
+    const show=$('apiKeyVisible').hidden;
+    syncKeyInput($('apiKey'));
+    $('apiKey').hidden=show;$('apiKeyVisible').hidden=!show;
+    $('toggleKey').textContent=show?'숨기기':'보기';
+    $('toggleKey').setAttribute('aria-pressed',String(show));
+    (show?$('apiKeyVisible'):$('apiKey')).focus();
   });
 
   $('saveBtn').addEventListener('click', async () => {
@@ -1766,7 +1780,7 @@ function initConversationTools(getRoom, updateSend) {
     const P = PROVIDERS[sheetProv];
     keys[sheetProv] = ''; store.del(P.keyStore);
     if (sheetProv === provider) { apiKey = ''; setStatus(false); }
-    $('apiKey').value = '';
+    $('apiKey').value = ''; syncKeyInput($('apiKey'));
     showKeyMsg(`${P.label} API 키를 이 브라우저에서 삭제했어요.`, 'good');
   });
 
