@@ -92,21 +92,23 @@ async function systemPrompt(body){
  return [fill(DATA['persona_system.md'],{...p,education:p.edu,sex:p.sex==='여자'?'여성':'남성',company:c.company,company_about:c.about,company_role:c.role,company_place:c.place,extra_company_note:c.note?'- '+c.note+'\n':'',today:today()})+(p.id==='donggyu'?DONGGYU_CHAT:''),0.85];
 }
 function validate(body){
+ if(body?.image!=null&&(typeof body.image!=='string'||body.image.length>1400000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(body.image)))throw new ApiError('사진 형식을 확인해 주세요.','validation_error',422);
  if(!body||typeof body.room_id!=='string'||!body.room_id.length||body.room_id.length>40||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>40)throw new ApiError('대화 요청 형식이 올바르지 않아요.','validation_error',422);
  if(body.messages.some(m=>!m||!['user','assistant'].includes(m.role)||typeof m.content!=='string'||!m.content.length||m.content.length>4000)||body.messages.at(-1).role!=='user'||(body.notes!==undefined&&(typeof body.notes!=='string'||body.notes.length>2000))||(body.provider!=null&&!Object.hasOwn(MODELS,body.provider))||(body.model!=null&&(typeof body.model!=='string'||body.model.length>80)))throw new ApiError('메시지나 설정 형식이 올바르지 않아요.','validation_error',422);
 }
 async function chat(req){
- if((req.headers.get('content-length')||0)>180000)throw new ApiError('요청이 너무 커요.','validation_error',413);
- let body;try{const raw=await req.text();if(raw.length>180000)throw Error();body=JSON.parse(raw);}catch{throw new ApiError('대화 요청을 읽을 수 없어요.','validation_error',422);}
+ if((req.headers.get('content-length')||0)>1600000)throw new ApiError('요청이 너무 커요.','validation_error',413);
+ let body;try{const raw=await req.text();if(raw.length>1600000)throw Error();body=JSON.parse(raw);}catch{throw new ApiError('대화 요청을 읽을 수 없어요.','validation_error',422);}
  validate(body);
  const ids=available();if(!ids.length)throw new ApiError('서버에 AI API 키가 설정되지 않았어요.','no_provider',503);
  const provider=body.provider|| (ids.includes(process.env.DEFAULT_PROVIDER)?process.env.DEFAULT_PROVIDER:ids[0]);
  if(!ids.includes(provider))throw new ApiError('선택한 AI 서비스의 키가 없어요.','provider_unavailable',400);
+ if(body.image&&provider!=='gemini')throw new ApiError('사진은 Gemini로 보내 주세요.','image_provider',400);
  const model=MODELS[provider].some(([m])=>m===body.model)?body.model:defaultModel(provider);
  const [system,temperature]=await systemPrompt(body),messages=body.messages;
  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),25000);
  const url=provider==='groq'?'https://api.groq.com/openai/v1/chat/completions':'https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':streamGenerateContent?alt=sse';
- const payload=provider==='groq'?{model,stream:true,temperature,max_tokens:1024,messages:[{role:'system',content:system},...messages],...(model.startsWith('openai/gpt-oss')?{reasoning_effort:'low'}:{})}:{systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{temperature,maxOutputTokens:2048,thinkingConfig:{thinkingLevel:model.includes("flash-lite")||model.includes("3.6")?"minimal":"low"}}};
+ const payload=provider==='groq'?{model,stream:true,temperature,max_tokens:1024,messages:[{role:'system',content:system},...messages],...(model.startsWith('openai/gpt-oss')?{reasoning_effort:'low'}:{})}:{systemInstruction:{parts:[{text:system}]},contents:messages.map((m,i)=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content},...(body.image&&i===messages.length-1?[{inlineData:{mimeType:'image/jpeg',data:body.image.split(',')[1]}}]:[])]})),generationConfig:{temperature,maxOutputTokens:2048,thinkingConfig:{thinkingLevel:model.includes("flash-lite")||model.includes("3.6")?"minimal":"low"}}};
  let upstream;
  try{upstream=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(provider==='groq'?{Authorization:'Bearer '+envKey(provider)}:{'x-goog-api-key':envKey(provider)})},body:JSON.stringify(payload),signal:abort.signal});}catch{clearTimeout(timeout);throw new ApiError('AI 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.','network',502);}
  if(!upstream.ok){clearTimeout(timeout);await upstream.body?.cancel();const s=upstream.status;throw new ApiError(s===429?'AI 사용 한도에 걸렸어요. 잠시 후 다시 보내 주세요.':s===401||s===403?'AI 서비스가 서버의 키를 거부했어요.':s===400||s===404?'이 모델을 사용할 수 없어요. 설정에서 다른 모델을 골라 주세요.':'AI 서버 오류가 발생했어요.',s===429?'rate_limited':s===401||s===403?'bad_key':s===400||s===404?'bad_model':'upstream_error',s===429?429:s===400||s===404?400:502);}

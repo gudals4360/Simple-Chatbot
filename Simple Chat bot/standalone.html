@@ -288,6 +288,14 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
 .profile .pacts svg { width: 26px; height: 26px; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.attachment-shelf{flex-shrink:0;padding:8px 12px;background:var(--input-bg)}
+.attachment-shelf[hidden],.emoji-picker[hidden],.photo-draft[hidden]{display:none}
+.emoji-picker{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow:auto}
+.emoji-picker button{font-size:26px;background:transparent;border:0;padding:6px;cursor:pointer}
+.photo-draft{display:flex;align-items:center;gap:12px}.photo-draft img{max-width:100px;max-height:90px;border-radius:10px}
+.photo-draft button{border:0;border-radius:8px;padding:8px}.attachment-alert{font-size:13px;color:var(--input-fg)}
+.chat-photo{display:block;max-width:min(240px,60vw);max-height:300px;border-radius:12px;cursor:pointer}
+.composer>.icon-btn{flex-shrink:0;font-size:25px}.typing[role=status]{min-width:30px}
 </style>
 </head>
 <body>
@@ -1411,7 +1419,7 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
     }
   }
 
-  function addMe(R, text) {
+  function addMe(R, text, image = null) {
     const now = new Date(); dayDivider(R, now);
     const minute = fmtTime(now);
     if (R.lastMe && R.lastMe.minute === minute && R.el.lastElementChild === R.lastMe.row) {
@@ -1422,50 +1430,125 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
     row.innerHTML = `<div class="col"><div class="line"><div class="bubble">${fmt(text)}</div>
       <div class="meta"><span class="unread">1</span><span class="time">${minute}</span></div></div></div>`;
     R.el.appendChild(row);
+    if(image){const photo=document.createElement('img');photo.src=image;photo.alt='보낸 사진';photo.className='chat-photo';row.querySelector('.bubble').prepend(photo);}
     R.lastMe = { row, minute };
     setPreview(R, text);
     scrollDown(R.el);
   }
 
-  function botGroup(R) {
-    const now = new Date(); dayDivider(R, now);
-    const row = document.createElement('div');
-    row.className = 'row bot';
-    row.innerHTML = `<div class="avatar">${R.def.avatar}</div><div class="col"><div class="name">${esc(R.def.name)}</div><div class="bubbles"></div></div>`;
-    R.el.appendChild(row);
-    R.lastMe = null;
-    const box = row.querySelector('.bubbles');
-    box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.gap = '4px'; box.style.alignItems = 'flex-start';
-    const seen = () => view === 'chat' && cur === R;
-    return {
-      typing() { box.innerHTML = `<div class="line"><div class="bubble"><span class="typing"><span></span><span></span><span></span></span></div></div>`; scrollDown(R.el); },
-      render(text, done) {
-        const paras = splitParas(text);
-        if (!paras.length) return;
-        box.innerHTML = paras.map((p, i) => {
-          const last = i === paras.length - 1;
-          return `<div class="line"><div class="bubble${i ? ' cont' : ''}">${fmt(p)}</div>${last && done ? `<div class="meta"><span>${fmtTime(new Date())}</span></div>` : ''}</div>`;
-        }).join('');
-        scrollDown(R.el);
-        if (done) { setPreview(R, paras[paras.length - 1]); if (!seen()) { R.unread += paras.length; updateLists(); } }
-      },
-      error(title, body, withBtn) {
-        box.innerHTML = `<div class="line"><div class="bubble error"><div class="err-title">${esc(title)}</div>${esc(body)}${withBtn ? '<br><button class="inline-btn" data-open-settings>API 키 설정 열기</button>' : ''}</div><div class="meta"><span>${fmtTime(new Date())}</span></div></div>`;
-        scrollDown(R.el);
-        setPreview(R, title); if (!seen()) { R.unread += 1; updateLists(); }
-      }
-    };
-  }
+function botGroup(R) {
+  const now = new Date(); dayDivider(R, now);
+  const row = document.createElement('div');
+  row.className = 'row bot';
+  row.innerHTML = `<div class="avatar">${R.def.avatar}</div><div class="col"><div class="name">${esc(R.def.name)}</div><div class="bubbles"></div></div>`;
+  R.el.appendChild(row);
+  R.lastMe = null;
+  const box = row.querySelector('.bubbles');
+  box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.gap = '4px'; box.style.alignItems = 'flex-start';
+  const seen = () => view === 'chat' && cur === R;
+  return {
+    typing() { if(box.querySelector('[data-typing]'))return; box.insertAdjacentHTML('beforeend', `<div class="line" data-typing><div class="bubble"><span class="typing" role="status" aria-label="입력 중"><span></span><span></span><span></span></span></div></div>`); scrollDown(R.el); },
+    sendPart(text) {
+      box.querySelector('[data-typing]')?.remove();
+      const line=document.createElement('div');line.className='line';
+      line.innerHTML=`<div class="bubble">${fmt(text)}</div><div class="meta"><span>${fmtTime(new Date())}</span></div>`;
+      box.append(line);scrollDown(R.el);setPreview(R,text);
+      if(!seen()){R.unread++;updateLists();}
+    },
+    render(text, done) {
+      const paras = splitParas(text);
+      if (!paras.length) return;
+      box.innerHTML = paras.map((p, i) => {
+        const last = i === paras.length - 1;
+        return `<div class="line"><div class="bubble${i ? ' cont' : ''}">${fmt(p)}</div>${last && done ? `<div class="meta"><span>${fmtTime(new Date())}</span></div>` : ''}</div>`;
+      }).join('');
+      scrollDown(R.el);
+      if (done) { setPreview(R, paras[paras.length - 1]); if (!seen()) { R.unread += paras.length; updateLists(); } }
+    },
+    error(title, body, withBtn) {
+      box.innerHTML = `<div class="line"><div class="bubble error"><div class="err-title">${esc(title)}</div>${esc(body)}${withBtn ? '<br><button class="inline-btn" data-open-settings>설정 열기</button>' : ''}</div><div class="meta"><span>${fmtTime(new Date())}</span></div></div>`;
+      scrollDown(R.el);
+      setPreview(R, title); if (!seen()) { R.unread += 1; updateLists(); }
+    },
+  };
+}
+
 
   function markRead(R) { R.el.querySelectorAll('.unread').forEach((u) => u.remove()); }
 
   // ---------- Groq 호출 (스트리밍) ----------
+// Shared by the hosted UI and the standalone page.
+function replyParts(text) {
+  return text.trim().split(/\n\s*\n|(?<=[.!?。！？])\s+(?=\S)/u).filter(Boolean)
+    .flatMap(part => part.length > 100 ? part.match(/.{1,90}(?:\s|$)|.{1,90}/gu) || [part] : [part]);
+}
+
+async function deliverReply(text, group, wait = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+  const parts = replyParts(text);
+  for (let i = 0; i < parts.length; i++) {
+    group.typing();
+    await wait(Math.min(3200, 850 + Array.from(parts[i]).length * 45));
+    group.sendPart(parts[i]);
+  }
+}
+
+function initConversationTools(getRoom, updateSend) {
+  const composer = document.getElementById('composer');
+  const msg = document.getElementById('msg');
+  const shelf = document.createElement('div');
+  shelf.className = 'attachment-shelf'; shelf.hidden = true;
+  const preview = document.createElement('div'); preview.className = 'photo-draft'; preview.hidden = true;
+  const alert = document.createElement('div'); alert.className = 'attachment-alert'; alert.setAttribute('role','status');
+  const picker = document.createElement('div'); picker.className = 'emoji-picker'; picker.hidden = true;
+  for (const emoji of ['😀','😊','😂','🥹','😍','😎','😭','😅','🤔','👍','👏','🙏','❤️','🔥','🎉','☕','🍚','👋']) {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = emoji;
+    button.setAttribute('aria-label',emoji+' 넣기');
+    button.onclick = () => { msg.setRangeText(emoji,msg.selectionStart,msg.selectionEnd,'end'); msg.dispatchEvent(new Event('input')); msg.focus(); };
+    picker.append(button);
+  }
+  const emojiButton=document.createElement('button'); emojiButton.type='button'; emojiButton.className='icon-btn'; emojiButton.textContent='☺'; emojiButton.setAttribute('aria-label','이모티콘 선택'); emojiButton.setAttribute('aria-expanded','false');
+  emojiButton.onclick=()=>{picker.hidden=!picker.hidden;emojiButton.setAttribute('aria-expanded',String(!picker.hidden));shelf.hidden=picker.hidden&&preview.hidden&&!alert.textContent;};
+  const photoButton=document.createElement('button'); photoButton.type='button'; photoButton.className='icon-btn'; photoButton.textContent='＋'; photoButton.setAttribute('aria-label','사진 첨부');
+  const input=document.createElement('input'); input.type='file'; input.accept='image/jpeg,image/png,image/webp'; input.hidden=true;
+  photoButton.onclick=()=>{if(!getRoom()?.busy)input.click();};
+  let selection=0;
+  input.onchange=async()=>{
+    const room=getRoom(), token=++selection, file=input.files[0]; input.value='';
+    if(!file||!room||room.busy)return;
+    alert.textContent='';
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024){alert.textContent='JPG·PNG·WebP 사진을 10MB 이하로 선택해 주세요.';shelf.hidden=false;return;}
+    try {
+      const bitmap=await createImageBitmap(file);
+      const scale=Math.min(1,1280/Math.max(bitmap.width,bitmap.height));
+      const canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+      const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+      const image=canvas.toDataURL('image/jpeg',0.78);
+      if(image.length>1400000)throw Error('사진 용량이 커요. 더 작은 사진을 선택해 주세요.');
+      if(token!==selection||getRoom()!==room)return;
+      room.attachment=image; refresh();updateSend();
+    }catch(e){alert.textContent=e.message||'사진을 읽지 못했어요.';shelf.hidden=false;}
+  };
+  function refresh(){
+    selection++;preview.replaceChildren(); const image=getRoom()?.attachment;
+    preview.hidden=!image;picker.hidden=true;emojiButton.setAttribute('aria-expanded','false');alert.textContent='';
+    if(image){const img=document.createElement('img');img.src=image;img.alt='보낼 사진 미리보기';const remove=document.createElement('button');remove.type='button';remove.textContent='사진 삭제';remove.onclick=()=>{getRoom().attachment=null;refresh();updateSend();};preview.append(img,remove);}
+    shelf.hidden=preview.hidden;
+  }
+  shelf.append(preview,picker,alert);composer.before(shelf);composer.prepend(photoButton,emojiButton,input);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){picker.hidden=true;emojiButton.setAttribute('aria-expanded','false');shelf.hidden=preview.hidden&&!alert.textContent;}});
+  return {refresh};
+}
+
+  let conversationTools;
   async function ask(userText) {
     const R = cur;
     if (R.busy) return;
     if (!apiKey) { openSheet(`먼저 ${PV().label} API 키를 입력해 주세요.`); return; }
+    const image=R.attachment||null;
+    if(image && provider!=='gemini'){window.alert('사진을 보내려면 설정에서 Gemini를 선택해 주세요.');return;}
+    R.attachment=null;conversationTools?.refresh();
     R.busy = true; updateSend();
-    addMe(R, userText);
+    addMe(R, userText, image);
     R.history.push({ role: 'user', content: userText });
     R.history = R.history.slice(-39);
 
@@ -1484,7 +1567,7 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
       headers = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
       body = {
         systemInstruction: { parts: [{ text: sys }] },
-        contents: R.history.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        contents: R.history.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content },...(image&&m===R.history.at(-1)?[{inlineData:{mimeType:'image/jpeg',data:image.split(',')[1]}}]:[])] })),
         generationConfig: { temperature, maxOutputTokens: 4096 }
       };
       extract = (j) => (j.candidates?.[0]?.content?.parts || []).filter((x) => !x.thought).map((x) => x.text || '').join('');
@@ -1526,16 +1609,17 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
           if (data === '[DONE]') continue;
           try {
             const delta = extract(JSON.parse(data));
-            if (delta) { full += delta; g.render(full, false); }
+            if (delta) { full += delta; /* Wait for a complete message before delivery. */ }
           } catch {}
         }
       }
       if (!full.trim()) full = '앗, 답변이 비어서 왔어요. 한 번만 다시 물어봐 주실래요?';
-      g.render(full, true);
+      await deliverReply(full,g);
       R.history.push({ role: 'assistant', content: full });
       setStatus(true);
     } catch (e) {
       R.history.pop();
+      if(image){R.attachment=image;conversationTools?.refresh();}
       const s = e.status;
       const name = PV().label;
       const keyBad = s === 401 || s === 403 || (s === 400 && /api key/i.test(e.message || ''));
@@ -1559,7 +1643,7 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
 
   // ---------- 입력창 ----------
   function updateSend() {
-    const has = msg.value.trim().length > 0;
+    const has = msg.value.trim().length > 0 || !!cur?.attachment;
     sendBtn.disabled = !has || cur.busy;
     sendBtn.classList.toggle('on', has && !cur.busy);
   }
@@ -1570,9 +1654,9 @@ ${extra ? '\n' + MATJIP_NOTES + '\n\n' + extra + '\n' : ''}
   $('composer').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = msg.value.trim();
-    if (!t || cur.busy) return;
+    if ((!t && !cur.attachment) || cur.busy) return;
     msg.value = ''; msg.style.height = 'auto'; updateSend();
-    ask(t);
+    ask(t || '이 사진 봐요.');
   });
   $('chips').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (c) ask(c.textContent); });
   $('toggleChips').addEventListener('click', () => { $('chips').hidden = !$('chips').hidden; });
@@ -2000,6 +2084,7 @@ ${wx}
 
   function enterRoom(R) {
     cur = R; chat = R.el;
+    conversationTools?.refresh();
     rooms.forEach((x) => { x.el.hidden = x !== R; });
     $('roomName').textContent = R.def.name;
     $('roomSub').textContent = R.def.sub;
@@ -2531,6 +2616,7 @@ ${wx}
   routeFromHash();
   if (apiKey) checkConnection(apiKey);
   else openSheet();
+conversationTools=initConversationTools(()=>cur,updateSend);
 })();
 </script>
 </body>

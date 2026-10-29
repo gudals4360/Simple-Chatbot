@@ -102,7 +102,7 @@ class GeminiClient:
     def __init__(self, api_key: str, timeout: float):
         self.api_key, self.timeout = api_key, timeout
 
-    def stream(self, model: str, system: str, messages: list[ChatMessage], temperature: float) -> Iterator[str]:
+    def stream(self, model: str, system: str, messages: list[ChatMessage], temperature: float, image: str | None = None) -> Iterator[str]:
         body = {
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
@@ -110,6 +110,8 @@ class GeminiClient:
             "generationConfig": {"temperature": temperature, "maxOutputTokens": 4096},
         }
         try:
+            if image:
+                body["contents"][-1]["parts"].append({"inlineData": {"mimeType": "image/jpeg", "data": image.split(",", 1)[1]}})
             r = requests.post(self.URL.format(model=requests.utils.quote(model, safe="")), json=body, stream=True,
                               timeout=self.timeout, headers={"x-goog-api-key": self.api_key})
         except requests.RequestException as e:

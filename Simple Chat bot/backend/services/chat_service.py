@@ -66,7 +66,12 @@ class ChatService:
     def stream_reply(self, req: ChatRequest) -> Iterator[str]:
         """첫 글자가 나오기 전의 오류(키, 모델, 방)는 LLMError로 올라간다."""
         provider = self.resolve_provider(req.provider)
+        if req.image and provider != "gemini":
+            raise LLMError("사진은 Gemini로 보내 주세요.", "image_provider", 400)
         model = self.resolve_model(provider, req.model)
         system, temperature = self.build_system_prompt(req)
         client = self.client_factory(provider)
-        yield from client.stream(model, system, req.messages, temperature)
+        if req.image:
+            yield from client.stream(model, system, req.messages, temperature, image=req.image)
+        else:
+            yield from client.stream(model, system, req.messages, temperature)

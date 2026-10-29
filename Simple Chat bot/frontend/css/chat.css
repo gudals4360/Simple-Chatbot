@@ -92,3 +92,12 @@
 .send svg { width: 20px; height: 20px; }
 .send:disabled { cursor: default; }
 
+
+.attachment-shelf{flex-shrink:0;padding:8px 12px;background:var(--input-bg)}
+.attachment-shelf[hidden],.emoji-picker[hidden],.photo-draft[hidden]{display:none}
+.emoji-picker{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow:auto}
+.emoji-picker button{font-size:26px;background:transparent;border:0;padding:6px;cursor:pointer}
+.photo-draft{display:flex;align-items:center;gap:12px}.photo-draft img{max-width:100px;max-height:90px;border-radius:10px}
+.photo-draft button{border:0;border-radius:8px;padding:8px}.attachment-alert{font-size:13px;color:var(--input-fg)}
+.chat-photo{display:block;max-width:min(240px,60vw);max-height:300px;border-radius:12px;cursor:pointer}
+.composer>.icon-btn{flex-shrink:0;font-size:25px}.typing[role=status]{min-width:30px}

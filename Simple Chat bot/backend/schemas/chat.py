@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     provider: Literal["groq", "gemini"] | None = None
     model: str | None = Field(default=None, max_length=80)
     notes: str = Field(default="", max_length=2000)  # 그럴깡 [추가 운영 정보]
+    image: str | None = Field(default=None, max_length=1400000, pattern=r"^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$")
 
     @field_validator("messages")
     @classmethod

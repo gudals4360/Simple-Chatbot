@@ -1,3 +1,4 @@
+import { deliverReply, initConversationTools } from './conversation-tools.js';
 // 채팅방 동작: 메시지 보내기 → 서버에서 답변 스트리밍 → 말풍선 갱신, 입력창, 공지, 연결 상태 표시.
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
@@ -6,6 +7,7 @@ import { addMe, botGroup, markRead } from './messages.js';
 import { openSheet } from './settings.js';
 
 const READY = { manager: '상담 가능', weather: '날씨 알림 가능', persona: '대화 가능' };
+let tools;
 let statusIssue = '서버 연결 확인 중…';  // 비어 있으면 대화 가능
 
 export function setStatusIssue(text) { statusIssue = text || ''; refreshStatus(); }
@@ -17,7 +19,7 @@ export function refreshStatus() {
 }
 
 export function updateSend() {
-  const has = $('msg').value.trim().length > 0;
+  const has = $('msg').value.trim().length > 0 || !!state.cur?.attachment;
   const busy = !!state.cur?.busy;
   $('sendBtn').disabled = !has || busy;
   $('sendBtn').classList.toggle('on', has && !busy);
@@ -40,8 +42,14 @@ function explain(e) {
 export async function ask(userText) {
   const R = state.cur;
   if (!R || R.busy) return;
+  const image=R.attachment || null;
+  if(image && !state.health?.providers?.some(p=>p.id==='gemini'&&p.configured)){
+    if(!$('msg').value) $('msg').value=userText;
+    window.alert('사진과 대화하려면 설정에서 Gemini 연결을 먼저 확인해 주세요.');return;
+  }
+  R.attachment=null;tools?.refresh();
   R.busy = true; updateSend();
-  addMe(R, userText);
+  addMe(R, userText, image);
   R.history.push({ role: 'user', content: userText });
   R.history = R.history.slice(-39);
 
@@ -53,16 +61,18 @@ export async function ask(userText) {
     let full = await streamChat({
       room_id: R.def.id,
       messages: R.history,
-      provider: state.provider || undefined,
-      model: state.model || undefined,
+      provider: image ? 'gemini' : state.provider || undefined,
+      image: image || undefined,
+      model: image ? undefined : state.model || undefined,
       notes: R.def.kind === 'manager' ? state.notes : '',
-    }, (text) => g.render(text, false));
+    }, () => {});
     if (!full.trim()) full = '앗, 답변이 비어서 왔어요. 한 번만 다시 물어봐 주실래요?';
-    g.render(full, true);
+    await deliverReply(full, g);
     R.history.push({ role: 'assistant', content: full });
     setStatusIssue('');
   } catch (e) {
     R.history.pop();
+    if(image){R.attachment=image;tools?.refresh();}
     const [title, body, withBtn, issue] = explain(e);
     g.error(title, body, withBtn);
     if (issue) setStatusIssue(issue);
@@ -78,6 +88,8 @@ function toggleNotice() {
 
 export function initComposer() {
   const msg = $('msg');
+  tools=initConversationTools(()=>state.cur,updateSend);
+  document.addEventListener('room-change',()=>tools.refresh());
   msg.addEventListener('input', () => { msg.style.height = 'auto'; msg.style.height = Math.min(msg.scrollHeight, 110) + 'px'; updateSend(); });
   msg.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); }
@@ -85,9 +97,9 @@ export function initComposer() {
   $('composer').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = msg.value.trim();
-    if (!t || state.cur?.busy) return;
+    if ((!t && !state.cur?.attachment) || state.cur?.busy) return;
     msg.value = ''; msg.style.height = 'auto'; updateSend();
-    ask(t);
+    ask(t || '이 사진 봐요.');
   });
   $('chips').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (c) ask(c.textContent); });
   $('toggleChips').addEventListener('click', () => { $('chips').hidden = !$('chips').hidden; });

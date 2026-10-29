@@ -73,6 +73,7 @@ export function updateLists() {
 
 function enterRoom(R) {
   state.cur = R; state.chat = R.el;
+  document.dispatchEvent(new Event('room-change'));
   state.rooms.forEach((x) => { x.el.hidden = x !== R; });
   $('roomName').textContent = R.def.name;
   $('roomSub').textContent = R.def.sub;

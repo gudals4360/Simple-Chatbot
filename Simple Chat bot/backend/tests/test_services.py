@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 
 from helpers import FakeClient, fake_forecast, make_settings
@@ -140,6 +141,23 @@ class ChatServiceTest(unittest.TestCase):
         with self.assertRaises(LLMError) as cm:
             "".join(self.svc.chat.stream_reply(self.req("nobody", "안녕")))
         self.assertEqual(cm.exception.status, 404)
+
+    def test_photo_requires_gemini(self):
+        req = self.req("donggyu", "사진", provider="groq", image="data:image/jpeg;base64,/9j/2Q==")
+        with self.assertRaises(LLMError) as cm:
+            "".join(self.svc.chat.stream_reply(req))
+        self.assertEqual(cm.exception.code, "image_provider")
+
+    def test_gemini_receives_photo_with_last_user_message(self):
+        from services.llm_service import GeminiClient
+        req = self.req("donggyu", "사진", image="data:image/jpeg;base64,/9j/2Q==")
+        with patch("services.llm_service.requests.post") as post:
+            post.return_value.status_code = 200
+            post.return_value.iter_lines.return_value = iter([])
+            list(GeminiClient("test-key", 10).stream("test-model", "지침", req.messages, 0.85, image=req.image))
+        parts = post.call_args.kwargs["json"]["contents"][-1]["parts"]
+        self.assertEqual(parts[0], {"text": "사진"})
+        self.assertEqual(parts[1]["inlineData"], {"mimeType": "image/jpeg", "data": "/9j/2Q=="})
 
     def test_provider_without_key(self):
         with self.assertRaises(LLMError) as cm:

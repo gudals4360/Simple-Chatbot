@@ -15,13 +15,15 @@ test('persona profile, extended history and Gemini temperature reach the provide
   };
   try {
     const messages = Array.from({length:39}, (_,i) => ({role:i%2?'assistant':'user',content:i===0?'저는 계단 없는 길이 좋아요.':i===38?'그때 기분은요?':'점심 이야기 '+i}));
-    const response = await handler(new Request('https://test.local/api/chat', {method:'POST',body:JSON.stringify({room_id:'donggyu',provider:'gemini',messages})}));
+    const response = await handler(new Request('https://test.local/api/chat', {method:'POST',body:JSON.stringify({room_id:'donggyu',provider:'gemini',messages,image:'data:image/jpeg;base64,/9j/2Q=='})}));
     assert.equal(response.status,200);
     assert.equal(await response.text(),'고맙긴 한데 좀 미안하죠.');
     assert.equal(payload.contents.length,39);
     assert.equal(payload.contents[0].parts[0].text,messages[0].content);
     assert.equal(payload.contents.at(-1).parts[0].text,'그때 기분은요?');
     assert.equal(payload.generationConfig.temperature,0.85);
+    assert.deepEqual(payload.contents.at(-1).parts[1],{inlineData:{mimeType:'image/jpeg',data:'/9j/2Q=='}});
+    assert.equal(payload.contents[0].parts.length,1);
     const system=payload.systemInstruction.parts[0].text;
     const profiles=JSON.parse(fs.readFileSync(new URL('../../Simple Chat bot/backend/data/personas.json',import.meta.url),'utf8'));
     assert.ok(system.includes(profiles.find(p=>p.id==='donggyu').bio));
@@ -34,6 +36,13 @@ test('persona profile, extended history and Gemini temperature reach the provide
   } finally {
     globalThis.fetch=originalFetch;
     if(originalKey===undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY=originalKey;
+  }
+});
+
+test('invalid or oversized photos are rejected',async()=>{
+  for(const image of ['data:text/html;base64,AAAA','data:image/jpeg;base64,'+'A'.repeat(1400000)]){
+    const response=await handler(new Request('https://test.local/api/chat',{method:'POST',body:JSON.stringify({room_id:'donggyu',messages:[{role:'user',content:'사진'}],image})}));
+    assert.equal(response.status,422);
   }
 });
 

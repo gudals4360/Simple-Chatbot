@@ -13,7 +13,7 @@ function dayDivider(R, now) {
   }
 }
 
-export function addMe(R, text) {
+export function addMe(R, text, image = null) {
   const now = new Date(); dayDivider(R, now);
   const minute = fmtTime(now);
   // 같은 분에 연달아 보내면 시간은 마지막 말풍선에만 표시 (카카오톡처럼)
@@ -25,6 +25,7 @@ export function addMe(R, text) {
   row.innerHTML = `<div class="col"><div class="line"><div class="bubble">${fmt(text)}</div>
     <div class="meta"><span class="unread">1</span><span class="time">${minute}</span></div></div></div>`;
   R.el.appendChild(row);
+  if(image){const photo=document.createElement('img');photo.src=image;photo.alt='보낸 사진';photo.className='chat-photo';row.querySelector('.bubble').prepend(photo);}
   R.lastMe = { row, minute };
   setPreview(R, text);
   scrollDown(R.el);
@@ -41,7 +42,14 @@ export function botGroup(R) {
   box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.gap = '4px'; box.style.alignItems = 'flex-start';
   const seen = () => state.view === 'chat' && state.cur === R;
   return {
-    typing() { box.innerHTML = `<div class="line"><div class="bubble"><span class="typing"><span></span><span></span><span></span></span></div></div>`; scrollDown(R.el); },
+    typing() { if(box.querySelector('[data-typing]'))return; box.insertAdjacentHTML('beforeend', `<div class="line" data-typing><div class="bubble"><span class="typing" role="status" aria-label="입력 중"><span></span><span></span><span></span></span></div></div>`); scrollDown(R.el); },
+    sendPart(text) {
+      box.querySelector('[data-typing]')?.remove();
+      const line=document.createElement('div');line.className='line';
+      line.innerHTML=`<div class="bubble">${fmt(text)}</div><div class="meta"><span>${fmtTime(new Date())}</span></div>`;
+      box.append(line);scrollDown(R.el);setPreview(R,text);
+      if(!seen()){R.unread++;updateLists();}
+    },
     render(text, done) {
       const paras = splitParas(text);
       if (!paras.length) return;
