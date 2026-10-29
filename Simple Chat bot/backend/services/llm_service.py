@@ -48,12 +48,16 @@ def _raise_for_status(r: requests.Response, label: str) -> None:
     except Exception:
         detail = r.text[:200]
     s = r.status_code
-    if s in (401, 403) or (s == 400 and "api key" in detail.lower()):
+    if s == 401 or (s in (400, 403) and any(x in detail.lower() for x in ("api key not valid", "api key expired", "api_key_invalid", "api_key_expired", "key was reported as leaked", "api key was reported as leaked"))):
         raise LLMError(f"{label}에서 서버의 API 키를 거부했어요. backend/.env의 키를 확인해 주세요.", "bad_key", 502)
+    if s == 403:
+        raise LLMError(f"{label} 프로젝트의 API 사용 권한이나 키 제한을 확인해 주세요. 키가 틀린 경우와는 다른 오류예요.", "permission_denied", 403)
+    if s == 402:
+        raise LLMError(f"{label} 프로젝트의 결제 또는 크레딧을 확인해 주세요.", "billing_required", 402)
     if s == 429:
         raise LLMError(f"{label} 사용 한도에 걸렸어요. 잠시 후 다시 보내 주세요.", "rate_limited", 429)
     if s in (400, 404):
-        raise LLMError(f"{label}에서 이 모델을 쓸 수 없어요. 설정에서 다른 모델을 골라 보세요. ({detail[:120]})", "bad_model", 400)
+        raise LLMError(f"{label}에서 모델이나 요청 설정을 거부했어요. 모델과 요청 형식을 확인해 주세요.", "bad_model", 400)
     raise LLMError(f"{label} 서버 오류 ({s}). 잠시 후 다시 시도해 주세요.", "upstream_error", 502)
 
 
@@ -107,7 +111,7 @@ class GeminiClient:
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
                          for m in messages],
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": 4096},
+            "generationConfig": {"maxOutputTokens": 4096},
         }
         try:
             if image:

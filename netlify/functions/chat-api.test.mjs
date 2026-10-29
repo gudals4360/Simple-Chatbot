@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import handler from './chat-api.mjs';
 
-test('persona profile, extended history and Gemini temperature reach the provider', async () => {
+test('persona profile, photo and history reach Gemini with compatible options', async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.GEMINI_API_KEY;
   process.env.GEMINI_API_KEY = 'test-only';
@@ -21,7 +21,8 @@ test('persona profile, extended history and Gemini temperature reach the provide
     assert.equal(payload.contents.length,39);
     assert.equal(payload.contents[0].parts[0].text,messages[0].content);
     assert.equal(payload.contents.at(-1).parts[0].text,'그때 기분은요?');
-    assert.equal(payload.generationConfig.temperature,0.85);
+    assert.equal(payload.generationConfig.temperature,undefined);
+    assert.equal(payload.generationConfig.thinkingConfig,undefined);
     assert.deepEqual(payload.contents.at(-1).parts[1],{inlineData:{mimeType:'image/jpeg',data:'/9j/2Q=='}});
     assert.equal(payload.contents[0].parts.length,1);
     const system=payload.systemInstruction.parts[0].text;
@@ -37,6 +38,18 @@ test('persona profile, extended history and Gemini temperature reach the provide
     globalThis.fetch=originalFetch;
     if(originalKey===undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY=originalKey;
   }
+});
+
+test('Gemini permission errors are distinct from invalid keys and never echo upstream text',async()=>{
+  const originalFetch=globalThis.fetch,originalKey=process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY='test-only';
+  try{
+    for(const [status,message,code] of [[403,'Project access restricted test-sensitive-value','permission_denied'],[400,'API key not valid test-sensitive-value','bad_key'],[402,'Payment required test-sensitive-value','billing_required']]){
+      globalThis.fetch=async()=>new Response(JSON.stringify({error:{message}}),{status});
+      const response=await handler(new Request('https://test.local/api/chat',{method:'POST',body:JSON.stringify({room_id:'donggyu',provider:'gemini',messages:[{role:'user',content:'안녕'}]})}));
+      const result=await response.json();assert.equal(result.code,code);assert.ok(!JSON.stringify(result).includes('test-sensitive-value'));
+    }
+  }finally{globalThis.fetch=originalFetch;if(originalKey===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=originalKey;}
 });
 
 test('invalid or oversized photos are rejected',async()=>{

@@ -6,6 +6,7 @@ API 키 같은 비밀 값은 코드에 쓰지 않고 환경 변수나 backend/.e
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -23,7 +24,15 @@ def _load_dotenv(path: Path) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        value = value.strip()
+        quoted = re.fullmatch(r"(['\"])(.*?)\1\s*(?:#.*)?", value)
+        if quoted:
+            value = quoted.group(2)
+        else:
+            value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
+            if value.startswith("#"):
+                value = ""
+        os.environ.setdefault(key.strip(), value)
 
 
 @dataclass(frozen=True)
@@ -55,8 +64,9 @@ def get_settings() -> Settings:
     _load_dotenv(BASE_DIR / ".env")
     origins = os.getenv("CORS_ORIGINS", "")
     return Settings(
-        groq_api_key=os.getenv("GROQ_API_KEY", ""),
-        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        groq_api_key=os.getenv("GROQ_API_KEY", "").strip().strip('"\''),
+        gemini_api_key=(os.getenv("GEMINI_API_KEY", "").strip().strip('"\'')
+                        or os.getenv("GOOGLE_API_KEY", "").strip().strip('"\'')),
         default_provider=os.getenv("DEFAULT_PROVIDER", "groq"),
         groq_model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),

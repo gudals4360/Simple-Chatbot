@@ -32,6 +32,8 @@ function explain(e) {
     case 'provider_unavailable': return ['이 AI 서비스는 서버에 키가 없어요.', ` ${e.message}`, true];
     case 'bad_key': return ['서버의 API 키가 올바르지 않아요.', ` ${e.message} backend/.env의 키를 확인해 주세요.`, false, 'API 키 확인 필요'];
     case 'rate_limited': return ['요청이 너무 많아요.', ' AI 서비스 사용 한도에 걸렸어요. 잠시 후 다시 보내 주세요.'];
+    case 'permission_denied': return ['API 사용 권한을 확인해 주세요.', ' Google AI Studio에서 프로젝트 상태와 키의 API·웹사이트·IP 제한을 확인해 주세요.'];
+    case 'billing_required': return ['결제 상태를 확인해 주세요.', ' Google AI Studio에서 크레딧 또는 결제 상태를 확인해 주세요.'];
     case 'bad_model': return ['모델 설정을 확인해 주세요.', ` ${e.message} 설정에서 다른 모델을 골라 보세요.`, true];
     case 'timeout': return ['응답이 너무 오래 걸려요.', ' 다시 보내 보거나 설정에서 더 빠른 모델을 골라 보세요.'];
     case 'network': return ['서버에 연결하지 못했어요.', ' 백엔드 서버(python backend/main.py)가 켜져 있는지 확인해 주세요.', false, '서버 연결 안 됨'];

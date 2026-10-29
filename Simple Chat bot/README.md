@@ -19,7 +19,7 @@ python main.py
 브라우저에서 **http://127.0.0.1:8000** 을 열면 돼요. 서버가 화면(frontend/)까지 함께 보여 줘요.
 
 - Groq 키: https://console.groq.com/keys (`gsk_`로 시작)
-- Gemini 키: https://aistudio.google.com/apikey (`AIza`로 시작)
+- Gemini 키: https://aistudio.google.com/apikey (복사한 키 전체)
 - 처음 실행하면 `backend/app.db`(SQLite)가 만들어지고 식당 664곳과 페르소나 5명이 들어가요.
 
 ## 폴더 구성
