@@ -69,7 +69,7 @@ def get_settings() -> Settings:
                         or os.getenv("GOOGLE_API_KEY", "").strip().strip('"\'')),
         default_provider=os.getenv("DEFAULT_PROVIDER", "groq"),
         groq_model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite"),
         db_path=Path(os.getenv("DB_PATH", str(BASE_DIR / "app.db"))),
         data_dir=BASE_DIR / "data",
         knowledge_dir=BASE_DIR / "knowledge",

@@ -8,9 +8,37 @@ export async function deliverReply(text, group, wait = ms => new Promise(resolve
   const parts = replyParts(text);
   for (let i = 0; i < parts.length; i++) {
     group.typing();
-    await wait(Math.min(3200, 850 + Array.from(parts[i]).length * 45));
+    if(i) await wait(140);
     group.sendPart(parts[i]);
   }
+}
+
+export function createReplyDelivery(group, {split = false, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = {}) {
+  let consumed = 0, count = 0, queue = Promise.resolve();
+  function send(text) {
+    if(!text.trim()) return;
+    queue = queue.then(async () => {
+      if(count){group.typing();await wait(140);}
+      group.sendPart(text.trim());count++;
+    });
+  }
+  function update(full) {
+    if(!split){group.render(full,false);return;}
+    while(consumed < full.length) {
+      const rest=full.slice(consumed);
+      const boundary=/[.!?。！？](?=\s)|\n\s*\n/u.exec(rest);
+      const length=boundary ? boundary.index+boundary[0].length : rest.length>=100 ? 90 : 0;
+      if(!length)break;
+      send(rest.slice(0,length));consumed+=length;
+    }
+  }
+  return {
+    update,
+    async finish(full) {
+      if(!split){group.render(full,true);return;}
+      update(full);send(full.slice(consumed));consumed=full.length;await queue;
+    },
+  };
 }
 
 export function initConversationTools(getRoom, updateSend) {

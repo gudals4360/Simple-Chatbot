@@ -296,6 +296,12 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
 .photo-draft button{border:0;border-radius:8px;padding:8px}.attachment-alert{font-size:13px;color:var(--input-fg)}
 .chat-photo{display:block;max-width:min(240px,60vw);max-height:300px;border-radius:12px;cursor:pointer}
 .composer>.icon-btn{flex-shrink:0;font-size:25px}.typing[role=status]{min-width:30px}
+
+/* Keep bounced messages inside the chat area and below the room title. */
+.chat-viewport{flex:1;min-height:0;overflow:hidden;position:relative;z-index:1;display:flex;flex-direction:column;isolation:isolate}
+.chat-viewport>.chat{min-height:0}
+.topbar{position:relative;z-index:5;isolation:isolate;flex-shrink:0}
+.composer,.attachment-shelf{position:relative;z-index:3;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -378,7 +384,9 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
     <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </div>
 
+  <div class="chat-viewport">
   <main class="chat" id="chat" aria-live="polite"></main>
+  </div>
 
   <div class="chips" id="chips">
     <button class="chip">7기 언제 개강해요?</button>
@@ -489,7 +497,7 @@ textarea.input { resize: vertical; min-height: 92px; line-height: 1.5; }
     gemini: {
       label: 'Gemini', keyStore: 'gk_gemini_key', modelStore: 'gk_model_gemini', host: 'generativelanguage.googleapis.com',
       keyUrl: 'https://aistudio.google.com/apikey', keyUrlText: 'aistudio.google.com/apikey', placeholder: 'Google AI Studio에서 복사한 키 전체',
-      models: [['gemini-3.8-flash', 'Gemini 3.8 Flash (추천)'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (가장 빠름)'], ['gemini-3.6-flash', 'Gemini 3.6 Flash'], ['gemini-4-argon', 'Gemini 4 Argon (가장 똑똑함, 느림)']],
+      models: [['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (추천, 빠름)'], ['gemini-3.8-flash', 'Gemini 3.8 Flash'], ['gemini-3.6-flash', 'Gemini 3.6 Flash'], ['gemini-4-argon', 'Gemini 4 Argon (가장 똑똑함, 느림)']],
       valid: (k) => /^[\x21-\x7E]+$/.test(k), invalid: 'Gemini 키 형식이 아니에요. Google AI Studio에서 복사한 키 전체를 붙여 넣어 주세요.'
     }
   };
@@ -1489,9 +1497,37 @@ async function deliverReply(text, group, wait = ms => new Promise(resolve => set
   const parts = replyParts(text);
   for (let i = 0; i < parts.length; i++) {
     group.typing();
-    await wait(Math.min(3200, 850 + Array.from(parts[i]).length * 45));
+    if(i) await wait(140);
     group.sendPart(parts[i]);
   }
+}
+
+function createReplyDelivery(group, {split = false, wait = ms => new Promise(resolve => setTimeout(resolve, ms))} = {}) {
+  let consumed = 0, count = 0, queue = Promise.resolve();
+  function send(text) {
+    if(!text.trim()) return;
+    queue = queue.then(async () => {
+      if(count){group.typing();await wait(140);}
+      group.sendPart(text.trim());count++;
+    });
+  }
+  function update(full) {
+    if(!split){group.render(full,false);return;}
+    while(consumed < full.length) {
+      const rest=full.slice(consumed);
+      const boundary=/[.!?。！？](?=\s)|\n\s*\n/u.exec(rest);
+      const length=boundary ? boundary.index+boundary[0].length : rest.length>=100 ? 90 : 0;
+      if(!length)break;
+      send(rest.slice(0,length));consumed+=length;
+    }
+  }
+  return {
+    update,
+    async finish(full) {
+      if(!split){group.render(full,true);return;}
+      update(full);send(full.slice(consumed));consumed=full.length;await queue;
+    },
+  };
 }
 
 function initConversationTools(getRoom, updateSend) {
@@ -1555,6 +1591,7 @@ function initConversationTools(getRoom, updateSend) {
     R.history = R.history.slice(-39);
 
     const g = botGroup(R);
+    const delivery=createReplyDelivery(g,{split:R.def.id==='donggyu'});
     setTimeout(() => markRead(R), 400);
     g.typing();
 
@@ -1570,7 +1607,7 @@ function initConversationTools(getRoom, updateSend) {
       body = {
         systemInstruction: { parts: [{ text: sys }] },
         contents: R.history.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content },...(image&&m===R.history.at(-1)?[{inlineData:{mimeType:'image/jpeg',data:image.split(',')[1]}}]:[])] })),
-        generationConfig: { maxOutputTokens: 4096 }
+        generationConfig: { maxOutputTokens:2048,...(model==='gemini-3.5-flash-lite'?{thinkingConfig:{thinkingLevel:'minimal'}}:model==='gemini-3.8-flash'?{thinkingConfig:{thinkingLevel:'low'}}:{}) }
       };
       extract = (j) => (j.candidates?.[0]?.content?.parts || []).filter((x) => !x.thought).map((x) => x.text || '').join('');
     } else {
@@ -1586,10 +1623,7 @@ function initConversationTools(getRoom, updateSend) {
     const ctrl = new AbortController();
     let timer = setTimeout(() => ctrl.abort(), WAIT);
     try {
-      const res = await Promise.race([
-        fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal }),
-        new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { name: 'AbortError' })), WAIT))
-      ]);
+      const res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctrl.signal});
       if (!res.ok) {
         let detail = '';
         try { const ej = await res.json(); detail = (Array.isArray(ej) ? ej[0] : ej).error?.message || ''; } catch {}
@@ -1611,12 +1645,12 @@ function initConversationTools(getRoom, updateSend) {
           if (data === '[DONE]') continue;
           try {
             const delta = extract(JSON.parse(data));
-            if (delta) { full += delta; /* Wait for a complete message before delivery. */ }
+            if (delta) { full += delta; delivery.update(full); }
           } catch {}
         }
       }
       if (!full.trim()) full = '앗, 답변이 비어서 왔어요. 한 번만 다시 물어봐 주실래요?';
-      await deliverReply(full,g);
+      await delivery.finish(full);
       R.history.push({ role: 'assistant', content: full });
       setStatus(true);
     } catch (e) {

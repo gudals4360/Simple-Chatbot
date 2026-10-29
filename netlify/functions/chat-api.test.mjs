@@ -22,7 +22,7 @@ test('persona profile, photo and history reach Gemini with compatible options', 
     assert.equal(payload.contents[0].parts[0].text,messages[0].content);
     assert.equal(payload.contents.at(-1).parts[0].text,'그때 기분은요?');
     assert.equal(payload.generationConfig.temperature,undefined);
-    assert.equal(payload.generationConfig.thinkingConfig,undefined);
+    assert.deepEqual(payload.generationConfig.thinkingConfig,{thinkingLevel:'minimal'});
     assert.deepEqual(payload.contents.at(-1).parts[1],{inlineData:{mimeType:'image/jpeg',data:'/9j/2Q=='}});
     assert.equal(payload.contents[0].parts.length,1);
     const system=payload.systemInstruction.parts[0].text;

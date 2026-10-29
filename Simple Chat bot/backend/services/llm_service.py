@@ -16,8 +16,8 @@ PROVIDER_MODELS: dict[str, list[tuple[str, str]]] = {
         ("llama-3.1-8b-instant", "Llama 3.1 8B (가장 빠름)"),
     ],
     "gemini": [
-        ("gemini-3.8-flash", "Gemini 3.8 Flash (추천)"),
-        ("gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite (가장 빠름)"),
+        ("gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite (추천, 빠름)"),
+        ("gemini-3.8-flash", "Gemini 3.8 Flash"),
         ("gemini-3.6-flash", "Gemini 3.6 Flash"),
         ("gemini-4-argon", "Gemini 4 Argon (가장 똑똑함, 느림)"),
     ],
@@ -111,8 +111,10 @@ class GeminiClient:
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
                          for m in messages],
-            "generationConfig": {"maxOutputTokens": 4096},
+            "generationConfig": {"maxOutputTokens": 2048},
         }
+        if model in ("gemini-3.5-flash-lite", "gemini-3.8-flash"):
+            body["generationConfig"]["thinkingConfig"] = {"thinkingLevel": "minimal" if model == "gemini-3.5-flash-lite" else "low"}
         try:
             if image:
                 body["contents"][-1]["parts"].append({"inlineData": {"mimeType": "image/jpeg", "data": image.split(",", 1)[1]}})

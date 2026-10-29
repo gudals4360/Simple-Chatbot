@@ -1,4 +1,4 @@
-import { deliverReply, initConversationTools } from './conversation-tools.js';
+import { createReplyDelivery, initConversationTools } from './conversation-tools.js';
 // 채팅방 동작: 메시지 보내기 → 서버에서 답변 스트리밍 → 말풍선 갱신, 입력창, 공지, 연결 상태 표시.
 import { $ } from '../core/dom.js';
 import { state } from '../core/state.js';
@@ -56,6 +56,7 @@ export async function ask(userText) {
   R.history = R.history.slice(-39);
 
   const g = botGroup(R);
+  const delivery=createReplyDelivery(g,{split:R.def.id==='donggyu'});
   setTimeout(() => markRead(R), 400);
   g.typing();
 
@@ -67,9 +68,9 @@ export async function ask(userText) {
       image: image || undefined,
       model: image ? undefined : state.model || undefined,
       notes: R.def.kind === 'manager' ? state.notes : '',
-    }, () => {});
+    }, text => delivery.update(text));
     if (!full.trim()) full = '앗, 답변이 비어서 왔어요. 한 번만 다시 물어봐 주실래요?';
-    await deliverReply(full, g);
+    await delivery.finish(full);
     R.history.push({ role: 'assistant', content: full });
     setStatusIssue('');
   } catch (e) {
