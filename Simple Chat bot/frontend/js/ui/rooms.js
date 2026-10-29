@@ -7,7 +7,7 @@ import { refreshStatus, updateSend } from './chat.js';
 import { openSheet } from './settings.js';
 
 const PLACEHOLDER = { manager: '메시지 입력', weather: '어디 날씨가 궁금하세요?' };
-const TAG = { persona: '<span class="ai-tag">AI 페르소나</span>', weather: '<span class="ai-tag">날씨</span>', manager: '' };
+const TAG = { persona: '', weather: '<span class="ai-tag">날씨</span>', manager: '' };
 
 // 서버가 준 방 정보(/api/rooms)로 채팅방 화면을 만든다.
 export function buildRooms(defs) {
@@ -109,7 +109,7 @@ function openProfile(id) {
   $('profName').textContent = d.name;
   $('profStatus').textContent = d.status;
   $('profMeta').textContent = d.kind === 'weather' ? '날씨·옷차림 도우미 · Open-Meteo 예보 사용\nAI 챗봇'
-    : d.kind === 'persona' ? `${d.age}세 · ${d.district}\n${d.company.company} · ${d.company.role}\n합성 페르소나 데이터로 만든 AI 대화 상대예요`
+    : d.kind === 'persona' ? `${d.age}세 · ${d.district}\n${d.company.company} · ${d.company.role}`
     : '한국경제아카데미 UXUI·PM 부트캠프 매니저 · AI 챗봇';
   $('profMeta').style.whiteSpace = 'pre-line';
   $('profChat').dataset.room = id;

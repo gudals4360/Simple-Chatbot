@@ -42,6 +42,17 @@ test('oversized history is rejected before calling the provider', async () => {
   assert.equal(response.status,422);
 });
 
+test('rooms use a brief greeting and persona UI has no AI label', async () => {
+  const response=await handler(new Request('https://test.local/api/rooms'));
+  const rooms=await response.json();
+  assert.equal(rooms.find(r=>r.id==='donggyu').hello,'안녕하세요 ㅎㅎ 이동규예요.');
+  for(const path of ['../../Simple Chat bot/frontend/js/ui/rooms.js','../../Simple Chat bot/standalone.html']) {
+    const source=fs.readFileSync(new URL(path,import.meta.url),'utf8');
+    assert.ok(!source.includes('AI 페르소나'));
+    assert.ok(!source.includes('합성 페르소나 데이터로 만든 AI 대화 상대예요'));
+  }
+});
+
 test('standalone and modular UI retain complete pairs within the API limit', () => {
   for(const path of ['../../Simple Chat bot/frontend/js/ui/chat.js','../../Simple Chat bot/standalone.html']) {
     const source=fs.readFileSync(new URL(path,import.meta.url),'utf8');

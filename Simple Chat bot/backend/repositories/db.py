@@ -23,6 +23,9 @@ def init_db(conn: sqlite3.Connection, data_dir: Path) -> None:
         seed_places(conn, data_dir / "kakao_places.tsv")
     if conn.execute("SELECT COUNT(*) FROM personas").fetchone()[0] == 0:
         seed_personas(conn, data_dir / "personas.json")
+    # Replace only the shipped greeting; preserve any locally customized text.
+    conn.execute("UPDATE personas SET hello = ? WHERE id = ? AND hello = ?",
+                 ("안녕하세요 ㅎㅎ 이동규예요.", "donggyu", "안녕하세요, 이동규입니다. 무대랑 세트 디자인 일을 해요.\n\n어제 오른쪽 다리를 깁스해서 오늘은 익숙한 출근길도 꽤 낯설더라고요. 이동할 때뿐 아니라 밥 먹고 씻는 것도 생각보다 손이 많이 가네요.\n\n제 하루나 일하면서 겪는 일, 편하게 물어보세요."))
     conn.commit()
 
 
