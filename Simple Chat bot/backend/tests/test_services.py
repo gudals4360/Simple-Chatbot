@@ -117,6 +117,21 @@ class ChatServiceTest(unittest.TestCase):
         self.assertIn("구직", call["system"])
         self.assertEqual(call["temperature"], 0.85)
 
+    def test_donggyu_profile_and_followup_history(self):
+        messages = [{"role": "user" if i % 2 == 0 else "assistant",
+                     "content": "저는 계단 없는 길이 좋아요." if i == 0 else "점심 이야기"}
+                    for i in range(38)]
+        messages.append({"role": "user", "content": "그때 기분은요?"})
+        req = ChatRequest(room_id="donggyu", messages=messages)
+        "".join(self.svc.chat.stream_reply(req))
+        call = self.fake.calls[0]
+        self.assertEqual(call["messages"], req.messages)
+        self.assertIn(self.svc.chat.personas.get("donggyu").bio, call["system"])
+        self.assertIn("이동규의 대화 호흡", call["system"])
+        self.assertIn("합성 페르소나", call["system"])
+        other, _ = self.svc.chat.build_system_prompt(self.req("seondong", "안녕"))
+        self.assertNotIn("이동규의 대화 호흡", other)
+
     def test_unknown_model_falls_back(self):
         "".join(self.svc.chat.stream_reply(self.req("gk", "안녕", model="not-a-model")))
         self.assertEqual(self.fake.calls[0]["model"], "openai/gpt-oss-120b")

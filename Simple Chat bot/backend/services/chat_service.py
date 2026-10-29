@@ -69,4 +69,4 @@ class ChatService:
         model = self.resolve_model(provider, req.model)
         system, temperature = self.build_system_prompt(req)
         client = self.client_factory(provider)
-        yield from client.stream(model, system, req.messages[-20:], temperature)
+        yield from client.stream(model, system, req.messages, temperature)

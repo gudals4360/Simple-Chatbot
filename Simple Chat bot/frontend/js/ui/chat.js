@@ -43,7 +43,7 @@ export async function ask(userText) {
   R.busy = true; updateSend();
   addMe(R, userText);
   R.history.push({ role: 'user', content: userText });
-  R.history = R.history.slice(-20);
+  R.history = R.history.slice(-39);
 
   const g = botGroup(R);
   setTimeout(() => markRead(R), 400);

@@ -38,7 +38,8 @@ class ApiTest(unittest.TestCase):
         rooms = requests.get(self.api + "/rooms", timeout=5).json()
         ids = [r["id"] for r in rooms]
         self.assertEqual(ids[:2], ["gk", "sky"])
-        self.assertEqual(len(ids), 7)
+        self.assertEqual(len(ids), 8)
+        self.assertIn("donggyu", ids)
         persona = next(r for r in rooms if r["id"] == "jia")
         self.assertEqual(persona["kind"], "persona")
         self.assertIn("company", persona)

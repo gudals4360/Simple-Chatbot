@@ -23,6 +23,7 @@ class PromptService:
         self.gk = Template(read("gk_system.md"))
         self.sky = Template(read("sky_system.md"))
         self.persona = Template(read("persona_system.md"))
+        self.donggyu_chat = read("donggyu_chat.md")
 
     def manager(self, notes: str = "", food_context: str = "", now: datetime | None = None) -> str:
         food = f"\n{self.matjip_notes}\n\n{food_context}\n" if food_context else ""
@@ -34,8 +35,10 @@ class PromptService:
 
     def persona_prompt(self, p: Persona, now: datetime | None = None) -> str:
         c = p.company
-        return self.persona.substitute(
+        prompt = self.persona.substitute(
             name=p.name, age=p.age, sex="여성" if p.sex == "여자" else "남성", job=p.job, district=p.district,
             housing=p.housing, education=p.education, marital=p.marital, family=p.family,
             company=c.company, company_about=c.about, company_role=c.role, company_place=c.place,
             extra_company_note=f"- {c.note}\n" if c.note else "", bio=p.bio, style=p.style, today=today_ko(now))
+
+        return prompt + ("\n" + self.donggyu_chat if p.id == "donggyu" else "")
