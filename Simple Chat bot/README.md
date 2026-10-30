@@ -147,7 +147,7 @@ python -m unittest discover -s tests -v
 
 - 부트캠프 정보: 한경닷컴 IT교육센터 공식 과정 페이지 (2026년 10월 27일 확인)
 - 식당 정보: 카카오맵 (2026년 10월 27일 수집). 평점·메뉴·가격은 바뀔 수 있어요.
-- 페르소나: Hugging Face 합성 페르소나 데이터셋 파일에서 5명 선택
+- 페르소나 5명(이지아·박승범·박한솔·최선동·박윤아): **NVIDIA Corporation**이 제작한 [Nemotron-Personas-Korea](https://huggingface.co/datasets/nvidia/Nemotron-Personas-Korea)에서 선별하고 챗봇용으로 가공했어요. 원본 데이터셋은 [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)로 제공됩니다. 회사·말투·인사·화면 표시 등 프로젝트에서 추가·변경한 설정이 있으며, 적용 파일과 가공 내역은 [출처 및 라이선스 고지](../THIRD_PARTY_NOTICES.md)를 확인하세요.
 - 날씨: Open-Meteo 예보 API
 
 ## 업데이트 기록
